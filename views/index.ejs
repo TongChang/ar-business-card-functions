@@ -8,12 +8,31 @@
     <h1><%= title %></h1>
     <p>Welcome to <%= title %></p>
 
-    <form
-      method="POST"
-      enctype="multipart/form-data"
-      action="add-resources/upload/">
-      <input type="file" name="thumbnail"></input>
-      <input type="submit"></input>
-    </form>
+    <hr>
+    <section>
+      <h2>add-resources/upload</h2>
+      <form
+        method="POST"
+        enctype="multipart/form-data"
+        action="add-resources/upload/">
+        <input type="file" name="thumbnail"></input>
+        <input type="submit"></input>
+      </form>
+    </section>
+    <hr>
+    <section>
+      <h2>add-resources/</h2>
+      <form
+        method="POST"
+        action="add-resources/">
+        <label for="name">name</label><input type="text" name="name"></input>
+        <label for="facebook">facebook</label><input type="text" name="facebook"></input>
+        <label for="instagram">instagram</label><input type="text" name="instagram"></input>
+        <label for="twitter">twitter</label><input type="text" name="twitter"></input>
+        <label for="url">url</label><input type="text" name="url"></input>
+        <label for="line">line</label><input type="text" name="line"></input>
+        <input type="submit"></input>
+      </form>
+    </section>
   </body>
 </html>
