@@ -9,15 +9,22 @@
     <p>Welcome to <%= title %></p>
 
     <hr>
+    <section class="resources">
+      <h2>/api/resources/</h2>
+      <p><label for="id">ID</label><input type="text" name="id"></input></p>
+      <a href="/api/resources/5ecbcfa2-5ac8-4913-9f8c-54487aaf42ad/">go to</a>
+    </section>
+    <hr>
     <section>
       <h2>/api/resources/upload-images/</h2>
       <form
         method="POST"
         enctype="multipart/form-data"
         action="/api/resources/upload-images/5ecbcfa2-5ac8-4913-9f8c-54487aaf42ad/">
-        <input type="file" name="thumbnail"></input>
-        <input type="file" name="marker"></input>
-        <input type="submit"></input>
+        <p><label for="id">ID</label><input type="text" name="id"></input></p>
+        <p><label for="thumbnail">サムネイル</label><input type="file" name="thumbnail"></input></p>
+        <p><label for="marker">マーカー</label><input type="file" name="marker"></input></p>
+        <p><input type="submit"></input></p>
       </form>
     </section>
     <hr>
