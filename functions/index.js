@@ -1,4 +1,7 @@
 const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+admin.initializeApp();
+
 const express = require('express');
 const app = express();
 const multer  = require('multer');
@@ -13,7 +16,7 @@ const uuidv4 = require('uuid/v4');
  * ## レスポンス
  *
  * header: {
- *   status: success or failed,
+ *   status: success or failure,
  *   errorCode: 0 ( 正常終了 )
  * },
  * body: {
@@ -26,30 +29,53 @@ const uuidv4 = require('uuid/v4');
  * }
  *
  */
-app.get('/:id', (req, res, next) => {
+app.get('/resources/:id', (req, res, next) => {
   let id = req.params.id;
 
-  let resource = {
-    id: id,
-    facebookId: 'facebookId',
-    instagramId: 'instagramId',
-    twitterName: 'twitterName',
-    url: 'url',
-    lineId: 'lineId'
-  };
+  admin
+    .database()
+    .ref(`/resource/${id}`)
+    .once('value')
+    .then( (snapshot) => {
+      let value = snapshot.val();
+      console.log('succeed on ref from database.');
+      console.log('get resource is %O', value);
+      if (!value) {
+        res.status(404).send('Not found');
+      }
+      let response = {
+        header: {
+          status: 'success',
+          errorCode: 0
+        },
+        body: {
+          id: id,
+          facebookId: value['facebookId'] || '',
+          instagramId: value['instagramId'] || '',
+          twitterName: value['twitterName'] || '',
+          url: value['url'] || '',
+          lineId: value['lineId'] || ''
+        }
+      };
 
-  let response = {
-    header: {
-      status: 'success',
-      errorCode: 0
-    },
-    body: {
-      resource
-    }
-  };
+      res.send(response);
 
-  res.send(response);
+      return false;
+    })
+    .catch( (error) => {
+      console.error('error occured on ref from database.');
+      console.error(JSON.stringify(error));
+      response = {
+        header: {
+          status: 'failure',
+          errorCode: 102
+        },
+        body: {}
+      };
+      res.send(JSON.stringify(response));
 
+      return false;
+    });
 });
 
 /**
@@ -61,7 +87,7 @@ app.get('/:id', (req, res, next) => {
  * ## レスポンス
  *
  * header: {
- *   status: success or failed,
+ *   status: success or failure,
  *   errorCode: 0 ( 正常終了 )
  * },
  * body: {
@@ -69,25 +95,59 @@ app.get('/:id', (req, res, next) => {
  * }
  *
  */
-app.post('/', (req, res, next) => {
+app.post('/resources/', (req, res, next) => {
   let generated_uuid = uuidv4();
 
   console.log('request is %O', req);
 
-  // DB に登録して
-  let resource = req.body;
-
-  let response = {
-    header: {
-      status: 'success',
-      errorCode: 0
-    },
-    body: {
-      id: generated_uuid
-    }
+  // DB に登録する
+  let information = {
+    name: req.body.name,
+    facebookId: req.body.facebookId,
+    instagramId: req.body.instagramId,
+    twitterId: req.body.twitterId,
+    lineId: req.body.lineId,
+    url: req.body.url
   };
+  let response = {};
 
-  res.send(JSON.stringify(response));
+  admin
+    .database()
+    .ref(`/resource/${generated_uuid}`)
+    .set( information )
+    .then( (snapshot) => {
+      console.log('succeed on push to database.');
+
+      // 登録成功
+      response = {
+        header: {
+          status: 'success',
+          errorCode: 0
+        },
+        body: {
+          id: generated_uuid
+        }
+      };
+      res.send(JSON.stringify(response));
+
+      return false;
+    })
+    .catch( (error) => {
+      console.error('error occured on push to database.');
+      console.error(error);
+      response = {
+        header: {
+          status: 'failure',
+          errorCode: 101
+        },
+        body: {}
+      };
+      res.send(JSON.stringify(response));
+
+      return false;
+    });
+
+
 });
 
 /**
@@ -100,13 +160,13 @@ app.post('/', (req, res, next) => {
  * ## レスポンス
  *
  * header: {
- *   status: success or failed,
+ *   status: success or failure,
  *   errorCode: 0 ( 正常終了 )
  * },
  * body: {}
  *
  */
-app.post('/upload-images/:id', upload.fields([ {name: 'thumbnail'}, {name: 'marker'} ]), (req, res, next) => {
+app.post('/resources/upload-images/:id', upload.fields([ {name: 'thumbnail'}, {name: 'marker'} ]), (req, res, next) => {
   console.log('req.params is %O', req.params);
   console.log('req.files is %O', req.files);
 
