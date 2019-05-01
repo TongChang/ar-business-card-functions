@@ -4,9 +4,9 @@ admin.initializeApp();
 
 const express = require('express');
 const app = express();
-const multer  = require('multer');
-const upload = multer({ storage: multer.memoryStorage });
 const uuidv4 = require('uuid/v4');
+
+const cors = require('cors');
 
 /**
  * # リソース情報の取得 ( ID )
@@ -29,7 +29,7 @@ const uuidv4 = require('uuid/v4');
  * }
  *
  */
-app.get('/resources/:id', (req, res, next) => {
+app.get('/resources/:id', cors(), (req, res, next) => {
   let id = req.params.id;
 
   admin
@@ -52,13 +52,13 @@ app.get('/resources/:id', (req, res, next) => {
           id: id,
           facebookId: value['facebookId'] || '',
           instagramId: value['instagramId'] || '',
-          twitterName: value['twitterName'] || '',
+          twitterId: value['twitterId'] || '',
           url: value['url'] || '',
           lineId: value['lineId'] || ''
         }
       };
 
-      res.send(response);
+      res.json(response);
 
       return false;
     })
@@ -95,10 +95,10 @@ app.get('/resources/:id', (req, res, next) => {
  * }
  *
  */
-app.post('/resources/', (req, res, next) => {
+app.post('/resources/', cors(), (req, res, next) => {
   let generated_uuid = uuidv4();
 
-  console.log('request is %O', req);
+  console.log('request body is %O', req.body);
 
   // DB に登録する
   let information = {
@@ -128,7 +128,7 @@ app.post('/resources/', (req, res, next) => {
           id: generated_uuid
         }
       };
-      res.send(JSON.stringify(response));
+      res.json(response);
 
       return false;
     })
@@ -146,8 +146,6 @@ app.post('/resources/', (req, res, next) => {
 
       return false;
     });
-
-
 });
 
 /**
@@ -166,18 +164,53 @@ app.post('/resources/', (req, res, next) => {
  * body: {}
  *
  */
-app.post('/resources/upload-images/:id', upload.fields([ {name: 'thumbnail'}, {name: 'marker'} ]), (req, res, next) => {
-  console.log('req.params is %O', req.params);
-  console.log('req.files is %O', req.files);
+app.post('/resources/upload-images/:id', cors(), (req, res, next) => {
+  console.log('req.body id %O' + req.body);
 
   let id = req.params.id;
 
-  let tmpThumbnail = req.files.thumbnail;
-  let tmpMarker = req.files.marker;
-
   // フォルダ作って
-  // ファイル置いて
+  //  let storageRef = admin.storage().ref();
+  //  let thumbnail = storageRef.child('/images/' + id + '/' + tmpThumbnail.originainame);
+  //  let marker = storageRef.child('/images/' + id + '/' + tmpMarker.originainame);
 
+  // ファイルを書き出す
+/*  Promise.all(thumbnail.put(tmpThumbnail), marker.put(tmpMarker)).then((snapshots) => {
+    console.log('file saved!!');
+    console.log('snapshots are %O', snapshots);
+
+    // データを更新する
+
+
+    // レスポンス
+    let response = {
+      header: {
+        status: 'success',
+        errorCode: 0
+      },
+      body: {}
+    };
+    res.send(JSON.stringify(response));
+
+    return false;
+  })
+  .catch( (error) => {
+    console.error('error occured on push to database.');
+    console.error(error);
+    response = {
+      header: {
+        status: 'failure',
+        errorCode: 103
+      },
+      body: {}
+    };
+    res.send(JSON.stringify(response));
+
+    return false;
+  });
+*/
+
+  // レスポンス
   let response = {
     header: {
       status: 'success',
@@ -185,7 +218,9 @@ app.post('/resources/upload-images/:id', upload.fields([ {name: 'thumbnail'}, {n
     },
     body: {}
   };
-  res.send(JSON.stringify(response));
+  res.json(response);
+
+  return false;
 });
 
 const api = functions.https.onRequest(app);
