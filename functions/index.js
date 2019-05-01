@@ -281,22 +281,18 @@ const uploadImageFromBase64 = (id, target, base64Code, mimeType) => {
 
     const dest = bucket.file('/images/' + id + '/' + target + ext);
 
-    const stream = new Stream.PassThrough();
-    stream.end(Buffer.from(base64Code, 'base64'));
+    console.log('code is [' + base64Code.substring(0,10) + '...' + base64Code.substring(base64Code.length - 10) + '] (' + base64Code.length + ')');
 
-    stream.pipe(dest.createWriteStream({
+    const decodeFileBuffer = Buffer.from(base64Code, 'base64');
+
+    const blobStream = dest.createWriteStream({
       metadata: {
         contentType: mimeType,
       },
-      private: false,
       public: true
-    }))
-    .on('error', err => {
-      console.error(`id : ${id} | error occured on get extension`);
-      console.error('error occured on get extension');
-      console.err(err);
-      reject(new Error({errorCode: 105, target: target}));
-    }).on('finish', () => {
+    });
+
+    blobStream.end(decodeFileBuffer, () => {
       dest.makePublic().then(data=> {
         console.log('MakeFilePublicResponse is %O', data);
         resolve(dest);
