@@ -1,12 +1,13 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-admin.initializeApp();
 
 const express = require('express');
 const app = express();
 const uuidv4 = require('uuid/v4');
 
 const cors = require('cors');
+
+const Stream = require('stream');
 
 /**
  * # リソース情報の取得 ( ID )
@@ -29,14 +30,14 @@ const cors = require('cors');
  * }
  *
  */
-app.get('/resources/:id', cors(), (req, res, next) => {
+app.get('/v1/resources/:id', cors(), (req, res, next) => {
   let id = req.params.id;
 
   admin
     .database()
     .ref(`/resource/${id}`)
     .once('value')
-    .then( (snapshot) => {
+    .then( snapshot => {
       let value = snapshot.val();
       console.log('succeed on ref from database.');
       console.log('get resource is %O', value);
@@ -54,7 +55,9 @@ app.get('/resources/:id', cors(), (req, res, next) => {
           instagramId: value['instagramId'] || '',
           twitterId: value['twitterId'] || '',
           url: value['url'] || '',
-          lineId: value['lineId'] || ''
+          lineId: value['lineId'] || '',
+          thumbnailUrl: value['thumbnailUrl'] || '',
+          markerUrl: value['markerUrl'] || ''
         }
       };
 
@@ -62,7 +65,7 @@ app.get('/resources/:id', cors(), (req, res, next) => {
 
       return false;
     })
-    .catch( (error) => {
+    .catch( error => {
       console.error('error occured on ref from database.');
       console.error(JSON.stringify(error));
       response = {
@@ -72,7 +75,7 @@ app.get('/resources/:id', cors(), (req, res, next) => {
         },
         body: {}
       };
-      res.send(JSON.stringify(response));
+      res.json(response);
 
       return false;
     });
@@ -95,7 +98,7 @@ app.get('/resources/:id', cors(), (req, res, next) => {
  * }
  *
  */
-app.post('/resources/', cors(), (req, res, next) => {
+app.post('/v1/resources/', cors(), (req, res, next) => {
   let generated_uuid = uuidv4();
 
   console.log('request body is %O', req.body);
@@ -107,7 +110,9 @@ app.post('/resources/', cors(), (req, res, next) => {
     instagramId: req.body.instagramId,
     twitterId: req.body.twitterId,
     lineId: req.body.lineId,
-    url: req.body.url
+    url: req.body.url,
+    thumbnailUrl: '',
+    markerUrl: ''
   };
   let response = {};
 
@@ -115,7 +120,7 @@ app.post('/resources/', cors(), (req, res, next) => {
     .database()
     .ref(`/resource/${generated_uuid}`)
     .set( information )
-    .then( (snapshot) => {
+    .then( snapshot => {
       console.log('succeed on push to database.');
 
       // 登録成功
@@ -132,7 +137,7 @@ app.post('/resources/', cors(), (req, res, next) => {
 
       return false;
     })
-    .catch( (error) => {
+    .catch( error => {
       console.error('error occured on push to database.');
       console.error(error);
       response = {
@@ -142,7 +147,7 @@ app.post('/resources/', cors(), (req, res, next) => {
         },
         body: {}
       };
-      res.send(JSON.stringify(response));
+      res.json(response);
 
       return false;
     });
@@ -164,65 +169,154 @@ app.post('/resources/', cors(), (req, res, next) => {
  * body: {}
  *
  */
-app.post('/resources/upload-images/:id', cors(), (req, res, next) => {
-  console.log('req.body id %O' + req.body);
+app.post('/v1/resources/upload-images/:id', cors(), (req, res, next) => {
+  const THUMBNAIL = 'thumbnail';
+  const MARKER = 'marker';
 
   let id = req.params.id;
 
-  // フォルダ作って
-  //  let storageRef = admin.storage().ref();
-  //  let thumbnail = storageRef.child('/images/' + id + '/' + tmpThumbnail.originainame);
-  //  let marker = storageRef.child('/images/' + id + '/' + tmpMarker.originainame);
+  console.log(`id: ${id}`);
+  console.log('req.body %O' + Object.keys(req.body));
+  console.log('req.body.thumbnailMimeType %s' + req.body.thumbnailMimeType);
+  console.log('req.body.markerMimeType %s' + req.body.markerMimeType);
+
+  const thumbnailBase64 = req.body.thumbnail;
+  const thumbnailMimeType = req.body.thumbnailMimeType;
+  const markerBase64 = req.body.marker;
+  const markerMimeType = req.body.markerMimeType;
+
+  if (!thumbnailBase64 || !thumbnailMimeType || !markerBase64 || !markerMimeType) {
+    // 引数が足りない
+    const response = {
+      header: {
+        status: 'failure',
+        errorCode: 105
+      },
+      body: {}
+    };
+    res.json(response);
+    return false;
+  }
+
+  // ファイルを作成する
+  const thumbnailUploadPromise = uploadImageFromBase64(id, 'thumbnail', thumbnailBase64, thumbnailMimeType);
+  const markerUploadPromise = uploadImageFromBase64(id, 'marker', markerBase64, markerMimeType);
 
   // ファイルを書き出す
-/*  Promise.all(thumbnail.put(tmpThumbnail), marker.put(tmpMarker)).then((snapshots) => {
+  Promise.all([thumbnailUploadPromise, markerUploadPromise]).then(files => {
     console.log('file saved!!');
-    console.log('snapshots are %O', snapshots);
+    console.log('file.metadata are %O', files[0]['metadata']);
 
-    // データを更新する
+    const imageInformation = {
+      thumbnailUrl: files[0]['metadata']['mediaLink'],
+      markerUrl: files[1]['metadata']['mediaLink']
+    };
 
+    console.log('file urls are %O', imageInformation);
 
-    // レスポンス
-    let response = {
+    return admin
+      .database()
+      .ref(`/resource/${id}`)
+      .update( imageInformation );
+  })
+  .then( snapshot => {
+    console.log('succeed on push to database.');
+
+    // 登録成功
+    response = {
       header: {
         status: 'success',
         errorCode: 0
       },
-      body: {}
+      body: {
+        id: id
+      }
     };
-    res.send(JSON.stringify(response));
+    res.json(response);
 
     return false;
   })
-  .catch( (error) => {
-    console.error('error occured on push to database.');
+  .catch(error => {
+    console.error('error occured on push to storage.');
     console.error(error);
-    response = {
+    let response = {
       header: {
         status: 'failure',
         errorCode: 103
       },
       body: {}
     };
-    res.send(JSON.stringify(response));
+    res.json(response);
 
     return false;
   });
-*/
-
-  // レスポンス
-  let response = {
-    header: {
-      status: 'success',
-      errorCode: 0
-    },
-    body: {}
-  };
-  res.json(response);
-
-  return false;
 });
 
-const api = functions.https.onRequest(app);
-module.exports = { api };
+const getExtension = mimeType => {
+  switch (mimeType) {
+    case 'image/jpeg':
+      return '.jpg';
+    case 'image/png':
+      return '.png';
+    case 'image/gif':
+      return '.gif';
+    default:
+      throw new Error('mimeTypeが期待するものではありませんでした。^image/(jpeg|png|gif)$が許可されています。');
+  }
+}
 
+const uploadImageFromBase64 = (id, target, base64Code, mimeType) => {
+  return new Promise((resolve, reject) => {
+
+    let ext;
+    try {
+      ext = getExtension(mimeType);
+    } catch (error) {
+      console.error(`id : ${id} | error occured on get extension`);
+      console.error(error);
+      reject(new Error({errorCode: 104, target: target}));
+    }
+
+    const bucket = admin.storage().bucket();
+
+    const dest = bucket.file('/images/' + id + '/' + target + ext);
+
+    const stream = new Stream.PassThrough();
+    stream.end(Buffer.from(base64Code, 'base64'));
+
+    stream.pipe(dest.createWriteStream({
+      metadata: {
+        contentType: mimeType,
+      },
+      private: false,
+      public: true
+    }))
+    .on('error', err => {
+      console.error(`id : ${id} | error occured on get extension`);
+      console.error('error occured on get extension');
+      console.err(err);
+      reject(new Error({errorCode: 105, target: target}));
+    }).on('finish', () => {
+      dest.makePublic().then(data=> {
+        console.log('MakeFilePublicResponse is %O', data);
+        resolve(dest);
+        return false;
+      }).catch(error => {
+        console.error(`id : ${id} | error occured on make public the ${target} file`);
+        console.error(error);
+        reject(new Error({errorCode: 109, target: target}));
+        return false;
+      });
+    });
+  });
+}
+
+const main = () => {
+  admin.initializeApp();
+  const api = functions
+    .region('asia-northeast1')
+    .https.onRequest(app);
+  module.exports = { api };
+};
+
+main();
