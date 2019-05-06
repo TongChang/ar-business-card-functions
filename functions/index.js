@@ -31,7 +31,7 @@ const Stream = require('stream');
  *
  */
 app.get('/v1/resources/:id', cors(), (req, res, next) => {
-  let id = req.params.id;
+  const id = req.params.id;
 
   const ref =  admin
     .database()
@@ -39,13 +39,13 @@ app.get('/v1/resources/:id', cors(), (req, res, next) => {
 
   ref.once('value')
     .then( snapshot => {
-      let value = snapshot.val();
+      const value = snapshot.val();
       console.log('succeed on ref from database.');
       console.log('get resource is %O', value);
       if (!value) {
         res.status(404).send('Not found');
       }
-      let response = {
+      const response = {
         header: {
           status: 'success',
           errorCode: 0
@@ -104,12 +104,12 @@ app.get('/v1/resources/:id', cors(), (req, res, next) => {
  *
  */
 app.post('/v1/resources/', cors(), (req, res, next) => {
-  let generated_uuid = uuidv4();
+  const generated_uuid = uuidv4();
 
   console.log('request body is %O', req.body);
 
   // DB に登録する
-  let information = {
+  const information = {
     name: req.body.name,
     facebookId: req.body.facebookId,
     instagramId: req.body.instagramId,
@@ -119,7 +119,6 @@ app.post('/v1/resources/', cors(), (req, res, next) => {
     thumbnailUrl: '',
     markerUrl: ''
   };
-  let response = {};
 
   admin
     .database()
@@ -129,7 +128,7 @@ app.post('/v1/resources/', cors(), (req, res, next) => {
       console.log('succeed on push to database.');
 
       // 登録成功
-      response = {
+      const response = {
         header: {
           status: 'success',
           errorCode: 0
@@ -145,7 +144,7 @@ app.post('/v1/resources/', cors(), (req, res, next) => {
     .catch( error => {
       console.error('error occured on push to database.');
       console.error(error);
-      response = {
+      const response = {
         header: {
           status: 'failure',
           errorCode: 101
@@ -178,7 +177,7 @@ app.post('/v1/resources/upload-images/:id', cors(), (req, res, next) => {
   const THUMBNAIL = 'thumbnail';
   const MARKER = 'marker';
 
-  let id = req.params.id;
+  const id = req.params.id;
 
   console.log(`id: ${id}`);
   console.log('req.body %O' + Object.keys(req.body));
@@ -244,7 +243,7 @@ app.post('/v1/resources/upload-images/:id', cors(), (req, res, next) => {
   .catch(error => {
     console.error('error occured on push to storage.');
     console.error(error);
-    let response = {
+    const response = {
       header: {
         status: 'failure',
         errorCode: 103
