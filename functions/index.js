@@ -33,10 +33,11 @@ const Stream = require('stream');
 app.get('/v1/resources/:id', cors(), (req, res, next) => {
   let id = req.params.id;
 
-  admin
+  const ref =  admin
     .database()
-    .ref(`/resource/${id}`)
-    .once('value')
+    .ref(`/resource/${id}`);
+
+  ref.once('value')
     .then( snapshot => {
       let value = snapshot.val();
       console.log('succeed on ref from database.');
@@ -61,6 +62,10 @@ app.get('/v1/resources/:id', cors(), (req, res, next) => {
         }
       };
 
+      const lastAccess = {
+        lastAccess: Date.now()
+      };
+      ref.update( lastAccess );
       res.json(response);
 
       return false;
