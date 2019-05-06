@@ -26,7 +26,8 @@ const Stream = require('stream');
  *   instagramId,
  *   twitterName,
  *   url,
- *   lineId
+ *   lineId,
+ *   email
  * }
  *
  */
@@ -57,6 +58,7 @@ app.get('/v1/resources/:id', cors(), (req, res, next) => {
           twitterId: value['twitterId'] || '',
           url: value['url'] || '',
           lineId: value['lineId'] || '',
+          email: value['email'] || '',
           thumbnailUrl: value['thumbnailUrl'] || '',
           markerUrl: value['markerUrl'] || ''
         }
@@ -116,6 +118,7 @@ app.post('/v1/resources/', cors(), (req, res, next) => {
     twitterId: req.body.twitterId,
     lineId: req.body.lineId,
     url: req.body.url,
+    email: req.body.email,
     thumbnailUrl: '',
     markerUrl: ''
   };
@@ -254,6 +257,7 @@ app.post('/v1/resources/upload-images/:id', cors(), (req, res, next) => {
 
     return false;
   });
+  return false;
 });
 
 const getExtension = mimeType => {
